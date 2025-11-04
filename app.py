@@ -25,6 +25,76 @@ st.set_page_config(
     layout="wide"
 )
 
+# Inject custom CSS to force blue theme for buttons and checkboxes
+st.markdown(
+    """
+    <style>
+    /* Override Streamlit's CSS variables for primary color */
+    :root {
+        --primary-color: #0066CC !important;
+    }
+    
+    /* Override primary button color - all buttons */
+    .stButton > button[kind="primary"],
+    .stButton > button[data-kind="primary"],
+    button[kind="primary"],
+    button[data-kind="primary"] {
+        background-color: #0066CC !important;
+        color: white !important;
+        border-color: #0066CC !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-kind="primary"]:hover,
+    button[kind="primary"]:hover,
+    button[data-kind="primary"]:hover {
+        background-color: #0052A3 !important;
+        border-color: #0052A3 !important;
+    }
+    
+    /* Override checkbox checked color to blue - BaseWeb styling */
+    [data-baseweb="checkbox"] [aria-checked="true"],
+    [data-baseweb="checkbox"] input:checked + span,
+    .stCheckbox [data-baseweb="checkbox"] [aria-checked="true"] {
+        background-color: #0066CC !important;
+        border-color: #0066CC !important;
+    }
+    
+    /* Override checkbox SVG fill color */
+    [data-baseweb="checkbox"] [aria-checked="true"] svg {
+        fill: white !important;
+    }
+    
+    /* Standard checkbox override */
+    input[type="checkbox"]:checked {
+        accent-color: #0066CC !important;
+        background-color: #0066CC !important;
+    }
+    
+    /* Override multiselect selected items (tags) to blue */
+    .stMultiSelect [data-baseweb="tag"],
+    [data-baseweb="tag"] {
+        background-color: #0066CC !important;
+        color: white !important;
+    }
+    
+    /* Override BaseWeb tag styling */
+    [data-baseweb="tag"] span {
+        color: white !important;
+    }
+    
+    /* Override all primary-colored elements */
+    [data-baseweb="button"][aria-selected="true"],
+    [data-baseweb="button"].primary {
+        background-color: #0066CC !important;
+        color: white !important;
+        border-color: #0066CC !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Initialize session state variables
 if 'uploaded_file' not in st.session_state:
     st.session_state.uploaded_file = None

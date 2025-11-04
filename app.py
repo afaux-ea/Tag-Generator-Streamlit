@@ -53,22 +53,54 @@ st.markdown(
     }
     
     /* Override checkbox checked color to blue - BaseWeb styling */
-    [data-baseweb="checkbox"] [aria-checked="true"],
-    [data-baseweb="checkbox"] input:checked + span,
-    .stCheckbox [data-baseweb="checkbox"] [aria-checked="true"] {
+    /* Target the span element that contains the checkmark */
+    [data-baseweb="checkbox"] span[style*="background"],
+    [data-baseweb="checkbox"] span[style*="background-color"],
+    [data-baseweb="checkbox"] > span,
+    .stCheckbox [data-baseweb="checkbox"] > span {
+        background-color: #0066CC !important;
+        border-color: #0066CC !important;
+    }
+    
+    /* Target when checkbox is checked - more specific selectors */
+    [data-baseweb="checkbox"] input[type="checkbox"]:checked + span,
+    [data-baseweb="checkbox"] input:checked ~ span,
+    [data-baseweb="checkbox"]:has(input:checked) > span,
+    [data-baseweb="checkbox"][aria-checked="true"] > span,
+    [data-baseweb="checkbox"]:has([aria-checked="true"]) > span {
+        background-color: #0066CC !important;
+        border-color: #0066CC !important;
+    }
+    
+    /* Override checkbox background image container */
+    [data-baseweb="checkbox"] span[style*="background-image"] {
         background-color: #0066CC !important;
         border-color: #0066CC !important;
     }
     
     /* Override checkbox SVG fill color */
-    [data-baseweb="checkbox"] [aria-checked="true"] svg {
+    [data-baseweb="checkbox"] [aria-checked="true"] svg,
+    [data-baseweb="checkbox"]:has(input:checked) svg {
         fill: white !important;
     }
     
     /* Standard checkbox override */
     input[type="checkbox"]:checked {
         accent-color: #0066CC !important;
+    }
+    
+    /* Force override all checkbox styling with higher specificity */
+    div[data-baseweb="checkbox"] span,
+    label[data-baseweb="checkbox"] span {
+        background-color: transparent !important;
+    }
+    
+    div[data-baseweb="checkbox"]:has(input:checked) span,
+    label[data-baseweb="checkbox"]:has(input:checked) span,
+    div[data-baseweb="checkbox"] input:checked + span,
+    label[data-baseweb="checkbox"] input:checked + span {
         background-color: #0066CC !important;
+        border-color: #0066CC !important;
     }
     
     /* Override multiselect selected items (tags) to blue */
@@ -91,6 +123,56 @@ st.markdown(
         border-color: #0066CC !important;
     }
     </style>
+    <script>
+    // Force checkboxes to blue after page load
+    function forceCheckboxBlue() {
+        const checkboxes = document.querySelectorAll('[data-baseweb="checkbox"]');
+        checkboxes.forEach(function(cb) {
+            const input = cb.querySelector('input[type="checkbox"]');
+            if (input) {
+                // Check initial state
+                if (input.checked) {
+                    const span = cb.querySelector('span');
+                    if (span) {
+                        span.style.setProperty('background-color', '#0066CC', 'important');
+                        span.style.setProperty('border-color', '#0066CC', 'important');
+                    }
+                }
+                // Watch for changes
+                input.addEventListener('change', function() {
+                    const span = cb.querySelector('span');
+                    if (span) {
+                        if (this.checked) {
+                            span.style.setProperty('background-color', '#0066CC', 'important');
+                            span.style.setProperty('border-color', '#0066CC', 'important');
+                        }
+                    }
+                });
+            }
+        });
+    }
+    
+    // Run on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', forceCheckboxBlue);
+    } else {
+        forceCheckboxBlue();
+    }
+    
+    // Also run after a delay to catch dynamically loaded checkboxes
+    setTimeout(forceCheckboxBlue, 500);
+    setTimeout(forceCheckboxBlue, 1000);
+    
+    // Use MutationObserver to watch for new checkboxes
+    const observer = new MutationObserver(function(mutations) {
+        forceCheckboxBlue();
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    </script>
     """,
     unsafe_allow_html=True
 )

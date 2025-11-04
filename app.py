@@ -52,16 +52,7 @@ st.markdown(
         border-color: #0052A3 !important;
     }
     
-    /* Override checkbox checked color to blue - BaseWeb styling */
-    /* Target the span element that contains the checkmark */
-    [data-baseweb="checkbox"] span[style*="background"],
-    [data-baseweb="checkbox"] span[style*="background-color"],
-    [data-baseweb="checkbox"] > span,
-    .stCheckbox [data-baseweb="checkbox"] > span {
-        background-color: #0066CC !important;
-        border-color: #0066CC !important;
-    }
-    
+    /* Override checkbox checked color to blue - ONLY for checked checkboxes */
     /* Target when checkbox is checked - more specific selectors */
     [data-baseweb="checkbox"] input[type="checkbox"]:checked + span,
     [data-baseweb="checkbox"] input:checked ~ span,
@@ -72,13 +63,14 @@ st.markdown(
         border-color: #0066CC !important;
     }
     
-    /* Override checkbox background image container */
-    [data-baseweb="checkbox"] span[style*="background-image"] {
-        background-color: #0066CC !important;
-        border-color: #0066CC !important;
+    /* Ensure unchecked checkboxes have transparent/white background */
+    [data-baseweb="checkbox"]:not(:has(input:checked)) > span,
+    [data-baseweb="checkbox"]:not(:has([aria-checked="true"])) > span,
+    [data-baseweb="checkbox"] input:not(:checked) + span {
+        background-color: transparent !important;
     }
     
-    /* Override checkbox SVG fill color */
+    /* Override checkbox SVG fill color - only for checked */
     [data-baseweb="checkbox"] [aria-checked="true"] svg,
     [data-baseweb="checkbox"]:has(input:checked) svg {
         fill: white !important;
@@ -89,18 +81,21 @@ st.markdown(
         accent-color: #0066CC !important;
     }
     
-    /* Force override all checkbox styling with higher specificity */
-    div[data-baseweb="checkbox"] span,
-    label[data-baseweb="checkbox"] span {
-        background-color: transparent !important;
-    }
-    
+    /* Force override checked checkbox styling with higher specificity */
     div[data-baseweb="checkbox"]:has(input:checked) span,
     label[data-baseweb="checkbox"]:has(input:checked) span,
     div[data-baseweb="checkbox"] input:checked + span,
     label[data-baseweb="checkbox"] input:checked + span {
         background-color: #0066CC !important;
         border-color: #0066CC !important;
+    }
+    
+    /* Ensure unchecked checkboxes have default styling */
+    div[data-baseweb="checkbox"]:not(:has(input:checked)) span,
+    label[data-baseweb="checkbox"]:not(:has(input:checked)) span,
+    div[data-baseweb="checkbox"] input:not(:checked) + span,
+    label[data-baseweb="checkbox"] input:not(:checked) + span {
+        background-color: transparent !important;
     }
     
     /* Override multiselect selected items (tags) to blue */
@@ -124,18 +119,20 @@ st.markdown(
     }
     </style>
     <script>
-    // Force checkboxes to blue after page load
+    // Force checkboxes to blue after page load (only checked ones)
     function forceCheckboxBlue() {
         const checkboxes = document.querySelectorAll('[data-baseweb="checkbox"]');
         checkboxes.forEach(function(cb) {
             const input = cb.querySelector('input[type="checkbox"]');
             if (input) {
-                // Check initial state
-                if (input.checked) {
-                    const span = cb.querySelector('span');
-                    if (span) {
+                const span = cb.querySelector('span');
+                if (span) {
+                    // Apply blue only if checked, transparent if unchecked
+                    if (input.checked) {
                         span.style.setProperty('background-color', '#0066CC', 'important');
                         span.style.setProperty('border-color', '#0066CC', 'important');
+                    } else {
+                        span.style.setProperty('background-color', 'transparent', 'important');
                     }
                 }
                 // Watch for changes
@@ -145,6 +142,8 @@ st.markdown(
                         if (this.checked) {
                             span.style.setProperty('background-color', '#0066CC', 'important');
                             span.style.setProperty('border-color', '#0066CC', 'important');
+                        } else {
+                            span.style.setProperty('background-color', 'transparent', 'important');
                         }
                     }
                 });

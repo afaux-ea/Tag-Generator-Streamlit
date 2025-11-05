@@ -39,14 +39,23 @@ class ExcelParser:
         """
         try:
             # Try to read as Excel first, then as CSV if that fails
+            # Note: We use keep_default_na=False and specify na_values to exclude "NA"
+            # This preserves "NA" as a string while still recognizing empty cells as missing
+            default_na_values = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', 
+                                '-NaN', '-nan', '1.#IND', '1.#QNAN', '<NA>', 'N/A', 
+                                'NULL', 'NaN', 'n/a', 'nan', 'null']
+            # Exclude "NA" from the list so it's preserved as a string
+            na_values_list = [v for v in default_na_values if v != 'NA']
+            
             try:
-                self.data = pd.read_excel(file_path, header=None)
+                self.data = pd.read_excel(file_path, header=None, keep_default_na=False, na_values=na_values_list)
             except Exception:
                 # Try different encodings for CSV
                 encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
                 for encoding in encodings:
                     try:
-                        self.data = pd.read_csv(file_path, header=None, encoding=encoding)
+                        self.data = pd.read_csv(file_path, header=None, encoding=encoding, 
+                                               keep_default_na=False, na_values=na_values_list)
                         break
                     except Exception:
                         continue

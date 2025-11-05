@@ -3,6 +3,7 @@
 Tag Generator - Streamlit Application
 
 A web-based application for generating formatted tags from environmental sampling data.
+Last updated: 2025-01-27
 This application allows users to:
 - Upload Excel files containing sampling data
 - Select locations, analytes, and sampling dates

@@ -5,8 +5,11 @@ Service for managing customization settings and providing a clean interface
 for GUI components to interact with customization data.
 """
 
-from typing import Dict, List, Optional
-from ..models.customization import CustomizationSettings, AnalyteNameMapping
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+from ..models.customization import CustomizationSettings, AnalyteNameMapping, ExceedanceConfig
+
+if TYPE_CHECKING:
+    from ..logic.parser import ExcelParser
 
 
 class CustomizationService:
@@ -196,6 +199,185 @@ class CustomizationService:
             The current exceedance fill color as hex string
         """
         return self.settings.exceedance_fill_color
+    
+    def set_exceedance_bold(self, enabled: bool):
+        """
+        Set whether exceedance values should be bolded.
+        
+        Args:
+            enabled: True to bold exceedance values, False otherwise
+        """
+        self.settings.exceedance_bold = enabled
+    
+    def get_exceedance_bold(self) -> bool:
+        """
+        Get whether exceedance values should be bolded.
+        
+        Returns:
+            True if exceedance values should be bolded, False otherwise
+        """
+        return self.settings.exceedance_bold
+    
+    def set_standards_text_color(self, standards_col_name: str, color: str):
+        """
+        Set the text color for a specific standards column.
+        
+        Args:
+            standards_col_name: The name of the standards column
+            color: The hex color string (e.g., "#FF0000")
+        """
+        config = self.settings.get_exceedance_config(standards_col_name)
+        config.text_color = color
+        self.settings.set_exceedance_config(standards_col_name, config)
+    
+    def get_standards_text_color(self, standards_col_name: str) -> str:
+        """
+        Get the text color for a specific standards column.
+        
+        Args:
+            standards_col_name: The name of the standards column
+            
+        Returns:
+            The text color as hex string
+        """
+        config = self.settings.get_exceedance_config(standards_col_name)
+        return config.text_color
+    
+    def set_standards_enabled(self, standards_col_name: str, enabled: bool):
+        """
+        Set whether a specific standards column is enabled for exceedance checking.
+        
+        Args:
+            standards_col_name: The name of the standards column
+            enabled: True to enable exceedance checking for this column, False to disable
+        """
+        config = self.settings.get_exceedance_config(standards_col_name)
+        config.enabled = enabled
+        self.settings.set_exceedance_config(standards_col_name, config)
+    
+    def get_standards_enabled(self, standards_col_name: str) -> bool:
+        """
+        Get whether a specific standards column is enabled for exceedance checking.
+        
+        Args:
+            standards_col_name: The name of the standards column
+            
+        Returns:
+            True if the standards column is enabled, False otherwise
+        """
+        config = self.settings.get_exceedance_config(standards_col_name)
+        return config.enabled
+    
+    def get_all_standards_configs(self) -> Dict[str, ExceedanceConfig]:
+        """
+        Get all exceedance configurations for standards columns.
+        
+        Returns:
+            Dictionary mapping standards column names to their ExceedanceConfig objects
+        """
+        return self.settings.get_all_exceedance_configs()
+    
+    def initialize_exceedance_configs(self, parser: 'ExcelParser'):
+        """
+        Initialize exceedance configurations for detected standards columns.
+        
+        This method should be called when a file is loaded to ensure all detected
+        standards columns have default configurations. All standards columns are
+        enabled by default.
+        
+        Args:
+            parser: The ExcelParser instance containing detected standards columns
+        """
+        standards_columns = parser.get_standards_columns()
+        
+        # Initialize configs for all detected standards columns
+        for standards_col_name in standards_columns:
+            # Get or create config (get_exceedance_config creates default if not exists)
+            config = self.settings.get_exceedance_config(standards_col_name)
+            # Ensure it's enabled by default
+            config.enabled = True
+            # Default text color is black (already set in ExceedanceConfig)
+            self.settings.set_exceedance_config(standards_col_name, config)
+    
+    def check_exceedance(self, analyte_name: str, value: float, parser: 'ExcelParser') -> Tuple[bool, Optional[str]]:
+        """
+        Check if a value exceeds any enabled standards for an analyte.
+        
+        Returns whether the value exceeds any standard and the name of the standards column
+        with the highest standard value that is exceeded (for text color determination).
+        
+        Args:
+            analyte_name: The name of the analyte
+            value: The numeric value to check
+            parser: The ExcelParser instance containing standards data
+            
+        Returns:
+            Tuple of (is_exceeded: bool, highest_exceeded_standards_col: Optional[str])
+            - is_exceeded: True if value exceeds any enabled standard, False otherwise
+            - highest_exceeded_standards_col: Name of standards column with highest exceeded value, or None
+        """
+        # Get all enabled standards configs
+        all_configs = self.get_all_standards_configs()
+        enabled_configs = {
+            col_name: config 
+            for col_name, config in all_configs.items() 
+            if config.enabled
+        }
+        
+        # If no enabled standards columns, check if any standards columns exist in parser
+        # and auto-enable them with default configs
+        standards_columns = parser.get_standards_columns()
+        if not enabled_configs and standards_columns:
+            # Auto-enable all standards columns with default configs
+            for col_name in standards_columns:
+                config = self.settings.get_exceedance_config(col_name)
+                enabled_configs[col_name] = config
+        
+        # Track which standards are exceeded and their values
+        exceeded_standards = {}  # Maps standards_col_name -> standard_value
+        
+        # Check each enabled standards column
+        for standards_col_name, config in enabled_configs.items():
+            # Get standard value for this analyte
+            standard_value = parser.get_standards_value(analyte_name, standards_col_name)
+            
+            # Skip if standard is None or non-numeric
+            if standard_value is None:
+                continue
+            
+            # Check if value exceeds this standard
+            if value > standard_value:
+                exceeded_standards[standards_col_name] = standard_value
+        
+        # If no standards were exceeded, return False
+        if not exceeded_standards:
+            return (False, None)
+        
+        # Find the highest standard value that was exceeded
+        # (highest standard value = most restrictive standard that was exceeded)
+        highest_exceeded_standard_value = max(exceeded_standards.values())
+        highest_exceeded_col = None
+        
+        # Find the standards column name with this highest value
+        # Iterate through standards_columns in order to respect the original column order
+        # When multiple standards have the same highest value, select the last one in the order
+        if standards_columns:
+            for col_name in standards_columns:
+                if col_name in exceeded_standards:
+                    std_value = exceeded_standards[col_name]
+                    if std_value == highest_exceeded_standard_value:
+                        highest_exceeded_col = col_name
+                        # Don't break - continue to find the last matching column
+        
+        # Fallback: if standards_columns is empty or no match found, use first exceeded standard
+        # (shouldn't happen in normal operation, but provides safety)
+        if highest_exceeded_col is None:
+            for col_name, std_value in exceeded_standards.items():
+                if std_value == highest_exceeded_standard_value:
+                    highest_exceeded_col = col_name
+                    break
+        
+        return (True, highest_exceeded_col)
     
     def set_font_family(self, font_family: str):
         """

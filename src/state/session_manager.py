@@ -24,6 +24,8 @@ def initialize_session_state():
         st.session_state.parser = None
     if 'file_loaded' not in st.session_state:
         st.session_state.file_loaded = False
+    if 'has_sample_depth' not in st.session_state:
+        st.session_state.has_sample_depth = False
     if 'selected_locations' not in st.session_state:
         st.session_state.selected_locations = []
     if 'selected_analytes' not in st.session_state:

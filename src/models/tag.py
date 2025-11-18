@@ -5,7 +5,7 @@ Contains data structures for representing tags, locations, analytes, and categor
 """
 
 from typing import List, Dict, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -58,10 +58,17 @@ class TagRow:
         analyte_name: Name of the analyte (empty for header rows)
         values: List of values for each date column
         is_highlighted: List of boolean flags indicating if each value should be highlighted
+        exceeded_standards_cols: List of standards column names for exceeded values (None if not exceeded)
     """
     analyte_name: str
     values: List[str]
     is_highlighted: List[bool]
+    exceeded_standards_cols: List[Optional[str]] = field(default_factory=list)
+    
+    def __post_init__(self):
+        """Initialize exceeded_standards_cols if not provided or if length doesn't match values."""
+        if not self.exceeded_standards_cols or len(self.exceeded_standards_cols) != len(self.values):
+            self.exceeded_standards_cols = [None] * len(self.values)
 
 
 @dataclass

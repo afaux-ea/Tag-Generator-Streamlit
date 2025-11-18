@@ -138,6 +138,112 @@ def render_tag_format_section():
             customization_service.set_center_analyte_names(center_analyte_names)
 
 
+def render_exceedance_handling_section():
+    """Render the Exceedance Handling section."""
+    with st.expander("⚠️ Exceedance Handling", expanded=False):
+        # Add CSS to reduce spacing between color pickers and separator lines
+        st.markdown("""
+        <style>
+        /* Reduce spacing after color picker widgets */
+        div[data-testid="stColorPicker"] {
+            margin-bottom: 0 !important;
+        }
+        /* Reduce spacing in the widget container */
+        div[data-testid="stColorPicker"] > div {
+            margin-bottom: 0 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        customization_service = st.session_state.customization_service
+        
+        # Check if parser is loaded and has standards columns
+        parser = st.session_state.get('parser')
+        if not parser or not st.session_state.get('file_loaded', False):
+            st.info("ℹ️ Upload a file to configure exceedance handling")
+            return
+        
+        # Get standards columns from parser
+        standards_columns = parser.get_standards_columns()
+        
+        if not standards_columns:
+            st.info("ℹ️ No standards columns detected in the uploaded file")
+            return
+        
+        # Global settings
+        # Bold exceedances checkbox
+        current_bold = customization_service.get_exceedance_bold()
+        exceedance_bold = st.checkbox(
+            "Bold Exceedances",
+            value=current_bold,
+            key="exceedance_bold_checkbox",
+            help="When enabled, values that exceed any standard will be displayed in bold"
+        )
+        
+        # Update customization service
+        if exceedance_bold != current_bold:
+            customization_service.set_exceedance_bold(exceedance_bold)
+        
+        # Exceedance fill color
+        current_fill_color = customization_service.get_exceedance_fill_color()
+        exceedance_fill_color = st.color_picker(
+            "Exceedance Fill Color",
+            value=current_fill_color,
+            key="exceedance_fill_color_picker",
+            help="Background color for cells that exceed any standard"
+        )
+        
+        # Update customization service
+        if exceedance_fill_color != current_fill_color:
+            customization_service.set_exceedance_fill_color(exceedance_fill_color)
+        
+        # Per-standards-column settings
+        # Display settings for each standards column
+        # Use enumerate to ensure unique keys even if there are duplicate column names
+        for idx, standards_col_name in enumerate(standards_columns):
+            # Add separator before NYSDEC SCO COM1
+            if "NYSDEC SCO COM1" in standards_col_name or standards_col_name == "NYSDEC SCO COM1":
+                st.markdown('<hr style="margin-top: 0.5rem; margin-bottom: 0.5rem;">', unsafe_allow_html=True)
+            
+            # Enable/disable checkbox
+            # Use index in key to ensure uniqueness even with duplicate column names
+            current_enabled = customization_service.get_standards_enabled(standards_col_name)
+            enabled = st.checkbox(
+                f"Enable {standards_col_name}",
+                value=current_enabled,
+                key=f"standards_enabled_{idx}_{standards_col_name}",
+                help=f"Enable exceedance checking for {standards_col_name}"
+            )
+            
+            # Update customization service
+            if enabled != current_enabled:
+                customization_service.set_standards_enabled(standards_col_name, enabled)
+            
+            # Text color picker
+            # Use index in key to ensure uniqueness even with duplicate column names
+            current_text_color = customization_service.get_standards_text_color(standards_col_name)
+            text_color = st.color_picker(
+                f"Text Color for {standards_col_name}",
+                value=current_text_color,
+                key=f"standards_text_color_{idx}_{standards_col_name}",
+                help=f"Text color to use when value exceeds {standards_col_name}"
+            )
+            
+            # Update customization service
+            if text_color != current_text_color:
+                customization_service.set_standards_text_color(standards_col_name, text_color)
+            
+            # Add spacing between standards columns
+            st.markdown('<hr style="margin-top: 0.25rem; margin-bottom: 0.5rem;">', unsafe_allow_html=True)
+        
+        # Update preview service when customization changes
+        if st.session_state.parser and st.session_state.file_loaded:
+            st.session_state.preview_service = PreviewService(
+                st.session_state.parser, 
+                st.session_state.customization_service
+            )
+
+
 def render_colors_section():
     """Render the Colors section."""
     with st.expander("🎨 Colors", expanded=False):
@@ -158,22 +264,6 @@ def render_colors_section():
         
         # Show current color value
         st.caption(f"Current: {header_color}")
-        
-        # Exceedance fill color
-        current_exceedance_color = customization_service.get_exceedance_fill_color()
-        exceedance_color = st.color_picker(
-            "Exceedance Fill Color",
-            value=current_exceedance_color,
-            key="exceedance_color_picker",
-            help="Background color for cells that exceed threshold values"
-        )
-        
-        # Update customization service
-        if exceedance_color != current_exceedance_color:
-            customization_service.set_exceedance_fill_color(exceedance_color)
-        
-        # Show current color value
-        st.caption(f"Current: {exceedance_color}")
 
 
 def render_fonts_section():
@@ -246,6 +336,7 @@ def render_customization_sidebar():
     - Analyte Name Mapping
     - Date Format
     - Tag Format Options
+    - Exceedance Handling
     - Colors
     - Fonts
     """
@@ -266,6 +357,7 @@ def render_customization_sidebar():
     render_analyte_mapping_section()
     render_date_format_section()
     render_tag_format_section()
+    render_exceedance_handling_section()
     render_colors_section()
     render_fonts_section()
 
